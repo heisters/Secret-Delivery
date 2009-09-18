@@ -6,6 +6,8 @@ gem 'ruby-openid', '>=2.1.2'
 require 'openid'
 require 'openid/store/filesystem'
 
+OpenID::Util.logger = Rack::CommonLogger # ensure OpenID can run without STDERR
+
 helpers do
   include Rack::Utils
   alias_method :h, :escape_html
