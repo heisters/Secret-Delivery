@@ -6,7 +6,9 @@ gem 'ruby-openid', '>=2.1.2'
 require 'openid'
 require 'openid/store/filesystem'
 
-OpenID::Util.logger = Rack::CommonLogger # ensure OpenID can run without STDERR
+logger = Logger.new($stderr)
+logger.progname = "OpenID"
+OpenID::Util.logger = logger
 
 helpers do
   include Rack::Utils
@@ -150,8 +152,6 @@ get '/fetch/openid' do
     when OpenID::Consumer::CANCEL
       "Login cancelled."
     when OpenID::Consumer::SUCCESS
-      p response.identity_url
-      p messages(response.identity_url)
       haml messages(response.identity_url).map{|m|"%p #{m}"}.join("\n")
   end
 end
