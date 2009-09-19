@@ -85,10 +85,41 @@ describe 'routes' do
   end
 
   describe "post '/login/openid'" do
+    before :each do
+      @openid_request = stub("OpenID Request", :redirect_url => 'redirect url')
+      @consumer = stub("OpenID Consumer")
+      @consumer.should_receive(:begin).and_return(@openid_request)
+      OpenID::Consumer.stub!(:new).and_return(@consumer)
+    end
+
     def do_post options={}
       post '/login/openid', {:credentials => "http://example.com/j"}.merge(options)
     end
 
-    it "should redirect to openid fetch on success"
+    it "should redirect to openid redirect on success" do
+      do_post
+      last_response.should be_redirect
+      last_response.location.should == 'redirect url'
+    end
+  end
+
+  describe "get '/fetch/openid'" do
+    before :each do
+      @openid_response = stub("OpenID Response",
+                              :identity_url => 'http://example.com/j',
+                              :status => OpenID::Consumer::SUCCESS)
+      @consumer = stub("OpenID Consumer")
+      @consumer.should_receive(:complete).and_return(@openid_response)
+      OpenID::Consumer.stub!(:new).and_return(@consumer)
+    end
+
+    def do_get options={}
+      get '/fetch/openid', {}.merge(options)
+    end
+
+    it "should respond ok" do
+      do_get
+      last_response.should be_ok
+    end
   end
 end

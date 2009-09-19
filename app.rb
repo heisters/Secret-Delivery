@@ -13,6 +13,7 @@ OpenID::Util.logger = logger
 helpers do
   include Rack::Utils
   alias_method :h, :escape_html
+
   def openid_consumer
     @openid_consumer ||= OpenID::Consumer.new(
       session,
@@ -72,11 +73,11 @@ end
 post '/login/openid' do
   credentials = params[:credentials]
   begin
-    request = openid_consumer.begin(credentials)
+    openid_request = openid_consumer.begin(credentials)
   rescue OpenID::DiscoveryFailure => why
     "Sorry, we couldn't find your identifier #{credentials.inspect}"
   else
-    redirect request.redirect_url(root_url, root_url + "/fetch/openid")
+    redirect openid_request.redirect_url(root_url, root_url + "/fetch/openid")
   end
 end
 
@@ -91,7 +92,7 @@ get '/fetch/openid' do
     when OpenID::Consumer::CANCEL
       "Login cancelled."
     when OpenID::Consumer::SUCCESS
-      haml messages(response.identity_url).map{|m|"%p #{m}"}.join("\n")
+      haml messages(response.identity_url).map{|m|"%pre #{m}"}.join("\n")
   end
 end
 
