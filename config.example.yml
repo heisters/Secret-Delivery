@@ -1,0 +1,6 @@
+:test:
+  :realm: "http://localhost:4567"
+:development:
+  :realm: "http://localhost:4567"
+:production:
+  :realm: "http://secrets.idiosyncra.tc"

@@ -86,7 +86,7 @@ describe 'routes' do
 
   describe "post '/login/openid'" do
     before :each do
-      @openid_request = stub("OpenID Request", :redirect_url => 'redirect url')
+      @openid_request = stub("OpenID Request", :null_object => true)
       @consumer = stub("OpenID Consumer")
       @consumer.should_receive(:begin).and_return(@openid_request)
       OpenID::Consumer.stub!(:new).and_return(@consumer)
@@ -96,30 +96,43 @@ describe 'routes' do
       post '/login/openid', {:credentials => "http://example.com/j"}.merge(options)
     end
 
-    it "should redirect to openid redirect on success" do
+    it "should redirect to the inbox on success" do
       do_post
       last_response.should be_redirect
-      last_response.location.should == 'redirect url'
+      last_response.location.should == '/inbox'
     end
   end
 
-  describe "get '/fetch/openid'" do
+  describe "get '/inbox'" do
     before :each do
+      @openid_request = stub("OpenID Request", :null_object => true)
       @openid_response = stub("OpenID Response",
                               :identity_url => 'http://example.com/j',
-                              :status => OpenID::Consumer::SUCCESS)
+                              :status => :success)
       @consumer = stub("OpenID Consumer")
-      @consumer.should_receive(:complete).and_return(@openid_response)
+      @consumer.stub!(:complete).and_return(@openid_response)
+      @consumer.stub!(:begin).and_return(@openid_request)
       OpenID::Consumer.stub!(:new).and_return(@consumer)
     end
 
-    def do_get options={}
-      get '/fetch/openid', {}.merge(options)
+    def do_post options={}
+      post '/login/openid', {:credentials => "http://example.com/j"}.merge(options)
     end
 
-    it "should respond ok" do
-      do_get
+    def do_get options={}
+      get '/inbox', {}.merge(options)
+    end
+
+    it "should respond ok with previous login" do
+      do_post
+      follow_redirect!
       last_response.should be_ok
+    end
+
+    it "should redirect to login without previous login" do
+      do_get
+      last_response.should be_redirect
+      last_response.location.should == "/login/openid"
     end
   end
 end

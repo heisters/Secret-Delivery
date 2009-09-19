@@ -2,34 +2,23 @@ require 'rubygems'
 require 'sinatra'
 require 'haml'
 require 'actionmailer'
-gem 'ruby-openid', '>=2.1.2'
-require 'openid'
-require 'openid/store/filesystem'
 
-logger = Logger.new($stderr)
-logger.progname = "OpenID"
-OpenID::Util.logger = logger
+CONFIG = YAML.load(File.read(File.dirname(__FILE__)+'/config.yml'))[Sinatra::Application.environment]
+use Rack::Session::Cookie
+
+OID = Rack::Auth::OpenID.new CONFIG[:realm],
+  :return_to => CONFIG[:realm]+'/inbox',
+  :openid_param => 'credentials'
 
 helpers do
   include Rack::Utils
   alias_method :h, :escape_html
-
-  def openid_consumer
-    @openid_consumer ||= OpenID::Consumer.new(
-      session,
-      OpenID::Store::Filesystem.new("#{File.dirname(__FILE__)}/tmp/openid")
-    )
-  end
 
   def root_url
     request.url.match(/(^.*\/{2}[^\/]*)/)[1]
   end
 
   def messages to, *new_messages
-    # normalize
-    to = unescape to.to_s
-    to = to[0...-1] if to[-1].chr == '/'
-
     $messages ||= {}
     $messages[to] ||= []
     $messages[to] += new_messages
@@ -46,9 +35,10 @@ post '/deliver' do
   if to.blank? or params[:secrets].blank?
     haml '%h3 Please specify recipient and secrets'
   else
-    messages to, params[:secrets]
     case params[:how]
     when 'openid'
+      to = OpenID.normalize_url to
+      messages to, params[:secrets]
       unless params[:notify_openid].blank?
         ApplicationMailer.deliver_fetch_openid(params[:notify_openid], to, root_url+'/login/openid')
       end
@@ -71,28 +61,17 @@ get '/login/openid' do
 end
 
 post '/login/openid' do
-  credentials = params[:credentials]
-  begin
-    openid_request = openid_consumer.begin(credentials)
-  rescue OpenID::DiscoveryFailure => why
-    "Sorry, we couldn't find your identifier #{credentials.inspect}"
-  else
-    redirect openid_request.redirect_url(root_url, root_url + "/fetch/openid")
-  end
+  OID.call env
+  redirect "/inbox"
 end
 
-get '/fetch/openid' do
-  response = openid_consumer.complete params, request.url
-
-  case response.status
-    when OpenID::Consumer::FAILURE
-      "Sorry, we could not authenticate you with the identifier '{openid}'."
-    when OpenID::Consumer::SETUP_NEEDED
-      "Immediate request failed - Setup Needed"
-    when OpenID::Consumer::CANCEL
-      "Login cancelled."
-    when OpenID::Consumer::SUCCESS
-      haml messages(response.identity_url).map{|m|"%pre #{m}"}.join("\n")
+get '/inbox' do
+  OID.call env
+  identifier = session[:openid][:openid_param]
+  if identifier
+    haml :inbox, :locals => {:messages => messages(identifier, 'hi'), :identifier => identifier}
+  else
+    redirect "/login/openid"
   end
 end
 
