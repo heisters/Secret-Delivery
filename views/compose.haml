@@ -1,0 +1,24 @@
+%ol
+  %li Text is transferred from your browser over an encrypted connection
+%form{:method => 'post', :action => '/deliver'}
+  %p
+    %label{:for => 'how'} Deliver how?
+    %select{:id => 'how', :name => 'how'}
+      %option{:value => 'openid'} OpenId
+      %option{:value => 'gpg'} GPG
+    %span.how.openid
+      %label{:for => 'to_openid'} Deliver To:
+      %input{:type => 'text', :id => 'to_openid', :name => 'to_openid'}
+      %label{:for => 'notify_openid'} Notify:
+      %input{:type => 'text', :id => 'notify_openid', :name => 'notify_openid'}
+    %span.how.gpg
+      %label{:for => 'to_gpg'} Deliver To:
+      %select{:id => 'to_gpg', :name => 'to_gpg'}
+        -keys.unshift('').each do |k|
+          %option{:value => k}
+            = h k
+  %p
+    %label{:for => 'secrets'} Secrets:
+    %textarea{:name => 'secrets'}
+  %p
+    %input{:type => 'submit', :value => 'Send Secrets'}

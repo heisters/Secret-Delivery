@@ -1,0 +1,5 @@
+%form{:method => 'post', :accept_charset => 'UTF-8', :action => '/login/openid'}
+  %p
+    %label{:for => 'credentials'} Your OpenID:
+    %input{:type => 'text', :name => 'credentials', :id => 'credentials'}
+    %input{:type => 'submit', :value => 'Login'}

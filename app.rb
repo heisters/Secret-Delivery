@@ -35,82 +35,21 @@ helpers do
   end
 end
 
-template :layout do
-  <<-HAML
-!!! Strict
-%html{html_attrs('en-en')}
-  %head
-    %meta{'http-equiv' => "content-type", :content => "text/html; charset=utf-8"}
-    %title Secret Delivery
-    %style{:type => 'text/css'}
-      textarea{width:100%;height:15em;border:solid 1px #666;}
-      textarea:focus{background:#ffe;border:solid 1px #666;}
-    %script{:type => 'text/javascript', :src => "http://www.google.com/jsapi"}
-    %script{:type => 'text/javascript', :src => "/application.js"}
-  %body
-    #container.container_12
-      #header
-        %h1 Secret Delivery
-      #wrapper
-        #flash
-        #content= yield
-  HAML
-end
-
-template :form do
-  <<-HAML
-%ol
-  %li Text is transferred from your browser over an encrypted connection
-%form{:method => 'post', :action => '/deliver'}
-  %p
-    %label{:for => 'how'} Deliver how?
-    %select{:id => 'how', :name => 'how'}
-      %option{:value => 'openid'} OpenId
-      %option{:value => 'gpg'} GPG
-    %span.how.openid
-      %label{:for => 'to-openid'} Deliver To:
-      %input{:type => 'text', :id => 'to-openid', :name => 'to-openid'}
-      %label{:for => 'notify-openid'} Notify:
-      %input{:type => 'text', :id => 'notify-openid', :name => 'notify-openid'}
-    %span.how.gpg
-      %label{:for => 'to-gpg'} Deliver To:
-      %select{:id => 'to-gpg', :name => 'to-gpg'}
-        -keys.unshift('').each do |k|
-          %option{:value => k}
-            = h k
-  %p
-    %label{:for => 'secrets'} Secrets:
-    %textarea{:name => 'secrets'}
-  %p
-    %input{:type => 'submit', :value => 'Send Secrets'}
-  HAML
-end
-
-template :"login/openid" do
-  <<-HAML
-%form{:method => 'post', :accept_charset => 'UTF-8', :action => '/login/openid'}
-  %p
-    %label{:for => 'credentials'} Your OpenID:
-    %input{:type => 'text', :name => 'credentials', :id => 'credentials'}
-    %input{:type => 'submit', :value => 'Login'}
-  HAML
-end
-
 get '/' do
   keys = `gpg --list-keys`
-  haml :form, :locals => {:keys => keys.grep(/uid/).map{|s| s.gsub(/uid\s*/, '')}}
+  haml :compose, :locals => {:keys => keys.grep(/uid/).map{|s| s.gsub(/uid\s*/, '')}}
 end
 
 post '/deliver' do
-  to = params['to-'+params[:how]]
+  to = params['to_'+params[:how]]
   if to.blank? or params[:secrets].blank?
     haml '%h3 Please specify recipient and secrets'
   else
     messages to, params[:secrets]
     case params[:how]
     when 'openid'
-      unless params['notify-openid'].blank?
-        ApplicationMailer.deliver_fetch_openid(params['notify-openid'], to, root_url+'/login/openid')
+      unless params[:notify_openid].blank?
+        ApplicationMailer.deliver_fetch_openid(params[:notify_openid], to, root_url+'/login/openid')
       end
       redirect "/success/#{to}"
     when 'gpg'
