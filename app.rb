@@ -4,7 +4,7 @@ require 'haml'
 require 'actionmailer'
 require 'pstore'
 
-CONFIG = YAML.load(File.read(File.dirname(__FILE__)+'/config.yml'))[Sinatra::Application.environment]
+CONFIG = YAML.load(File.read(File.dirname(__FILE__)+'/config.yml'))[Sinatra::Application.environment.to_s]
 use Rack::Session::Cookie
 
 helpers do
