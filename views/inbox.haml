@@ -1,3 +1,5 @@
 %h2== Messages for #{identifier}
-- messages.each do |message|
-  %pre= message
+%ol
+  - messages.each do |message|
+    %li
+      %pre= message
