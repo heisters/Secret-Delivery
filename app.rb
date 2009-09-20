@@ -2,13 +2,10 @@ require 'rubygems'
 require 'sinatra'
 require 'haml'
 require 'actionmailer'
+require 'pstore'
 
 CONFIG = YAML.load(File.read(File.dirname(__FILE__)+'/config.yml'))[Sinatra::Application.environment]
 use Rack::Session::Cookie
-
-OID = Rack::Auth::OpenID.new CONFIG[:realm],
-  :return_to => CONFIG[:realm]+'/inbox',
-  :openid_param => 'credentials'
 
 helpers do
   include Rack::Utils
@@ -18,10 +15,21 @@ helpers do
     request.url.match(/(^.*\/{2}[^\/]*)/)[1]
   end
 
+  def oid
+    @oid ||= Rack::Auth::OpenID.new CONFIG[:realm],
+      :return_to => CONFIG[:realm]+'/inbox',
+      :openid_param => 'credentials'
+  end
+
+  def db
+    @db ||= PStore.new File.dirname(__FILE__)+'/db.pstore'
+  end
+
   def messages to, *new_messages
-    $messages ||= {}
-    $messages[to] ||= []
-    $messages[to] += new_messages
+    db.transaction do
+      db[to] ||= []
+      db[to] += new_messages
+    end
   end
 end
 
@@ -37,6 +45,7 @@ post '/deliver' do
   else
     case params[:how]
     when 'openid'
+      oid # ensure that OpenID has been initialized
       to = OpenID.normalize_url to
       messages to, params[:secrets]
       unless params[:notify_openid].blank?
@@ -61,15 +70,16 @@ get '/login/openid' do
 end
 
 post '/login/openid' do
-  OID.call env
+  oid.call env
   redirect "/inbox"
 end
 
 get '/inbox' do
-  OID.call env
+  oid.call env
   identifier = session[:openid][:openid_param]
   if identifier
-    haml :inbox, :locals => {:messages => messages(identifier, 'hi'), :identifier => identifier}
+    identifier = OpenID.normalize_url identifier
+    haml :inbox, :locals => {:messages => messages(identifier), :identifier => identifier}
   else
     redirect "/login/openid"
   end

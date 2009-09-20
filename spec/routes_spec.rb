@@ -123,16 +123,21 @@ describe 'routes' do
       get '/inbox', {}.merge(options)
     end
 
-    it "should respond ok with previous login" do
-      do_post
-      follow_redirect!
-      last_response.should be_ok
-    end
-
     it "should redirect to login without previous login" do
       do_get
       last_response.should be_redirect
       last_response.location.should == "/login/openid"
+    end
+
+    describe "when logged in" do
+      before :each do
+        do_post
+      end
+
+      it "should respond ok" do
+        do_get
+        last_response.should be_ok
+      end
     end
   end
 end
